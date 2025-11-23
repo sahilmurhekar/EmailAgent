@@ -9,6 +9,7 @@ export default function InboxView() {
   const [message, setMessage] = useState("");
   const [selectedEmail, setSelectedEmail] = useState(null);
 
+  const SERVER_URL = import.meta.env.VITE_SERVER_URL;
   useEffect(() => {
     fetchEmails();
   }, []);
@@ -16,7 +17,7 @@ export default function InboxView() {
   const fetchEmails = async () => {
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:5000/api/emails");
+      const response = await fetch(`${SERVER_URL}/api/emails`);
       const data = await response.json();
 
       if (data.success) {
@@ -35,7 +36,7 @@ export default function InboxView() {
       setLoading(true);
       setMessage("Loading mock inbox...");
 
-      const response = await fetch("http://localhost:5000/api/inbox/load", {
+      const response = await fetch(`${SERVER_URL}/api/inbox/load`, {
         method: "POST",
       });
 
@@ -65,7 +66,7 @@ export default function InboxView() {
       setMessage("🤖 Processing emails with AI...");
 
       const response = await fetch(
-        "http://localhost:5000/api/agent/categorize-all",
+        `${SERVER_URL}/api/agent/categorize-all`,
         {
           method: "POST",
         }

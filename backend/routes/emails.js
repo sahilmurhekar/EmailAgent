@@ -1,3 +1,6 @@
+// File: backend/routes/emails.js
+// Fixed version - proper error handling
+
 const express = require("express");
 const router = express.Router();
 const {
@@ -7,63 +10,20 @@ const {
   updateEmailCategory,
 } = require("../utils/dbHelpers");
 
-// POST - Load mock inbox from JSON file
-const fs = require("fs");
-const path = require("path");
-
-router.post("/load-mock", async (req, res) => {
-  try {
-    // Read mock inbox JSON
-    const mockInboxPath = path.join(__dirname, "../data/mock-inbox.json");
-    const mockEmails = JSON.parse(fs.readFileSync(mockInboxPath, "utf8"));
-
-    // Clear existing emails first (optional)
-    const clearEmails = () => {
-      return new Promise((resolve, reject) => {
-        const db = require("../db");
-        db.run("DELETE FROM emails", (err) => {
-          if (err) reject(err);
-          else resolve(true);
-        });
-      });
-    };
-
-    await clearEmails();
-
-    // Insert each email
-    const results = [];
-    for (const email of mockEmails) {
-      const emailId = await insertEmail(
-        email.sender,
-        email.subject,
-        email.body,
-        "Uncategorized"
-      );
-      results.push({
-        id: emailId,
-        sender: email.sender,
-        subject: email.subject,
-      });
-    }
-
-    res.json({
-      success: true,
-      data: {
-        message: `Loaded ${results.length} emails from mock inbox`,
-        emailsLoaded: results,
-      },
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
 // GET all emails
 router.get("/", async (req, res) => {
   try {
+    console.log("📧 Fetching all emails...");
     const emails = await getAllEmails();
+    console.log(`✓ Found ${emails.length} emails`);
+
     res.json({ success: true, data: emails });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("✗ Error fetching emails:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to fetch emails"
+    });
   }
 });
 
@@ -71,12 +31,21 @@ router.get("/", async (req, res) => {
 router.get("/:id", async (req, res) => {
   try {
     const email = await getEmailById(req.params.id);
+
     if (!email) {
-      return res.status(404).json({ success: false, error: "Email not found" });
+      return res.status(404).json({
+        success: false,
+        error: "Email not found"
+      });
     }
+
     res.json({ success: true, data: email });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("✗ Error fetching email:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
   }
 });
 
@@ -93,12 +62,24 @@ router.post("/", async (req, res) => {
     }
 
     const emailId = await insertEmail(sender, subject, body, category);
+    console.log(`✓ Created email with ID: ${emailId}`);
+
     res.json({
       success: true,
-      data: { id: emailId, sender, subject, body, category },
+      data: {
+        id: emailId,
+        sender,
+        subject,
+        body,
+        category: category || "Uncategorized"
+      },
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("✗ Error creating email:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
   }
 });
 
@@ -106,19 +87,27 @@ router.post("/", async (req, res) => {
 router.put("/:id/category", async (req, res) => {
   try {
     const { category } = req.body;
+
     if (!category) {
-      return res
-        .status(400)
-        .json({ success: false, error: "Category is required" });
+      return res.status(400).json({
+        success: false,
+        error: "Category is required"
+      });
     }
 
     await updateEmailCategory(req.params.id, category);
+    console.log(`✓ Updated email ${req.params.id} category to: ${category}`);
+
     res.json({
       success: true,
       data: { id: req.params.id, category },
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("✗ Error updating email:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
   }
 });
 

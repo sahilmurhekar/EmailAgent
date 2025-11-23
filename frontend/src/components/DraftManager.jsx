@@ -13,6 +13,7 @@ export default function DraftManager() {
   const [message, setMessage] = useState("");
   const [draftForm, setDraftForm] = useState({ subject: "", body: "" });
 
+  const SERVER_URL = import.meta.env.VITE_SERVER_URL;
   useEffect(() => {
     fetchEmails();
     fetchDrafts();
@@ -21,7 +22,7 @@ export default function DraftManager() {
   const fetchEmails = async () => {
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:5000/api/emails");
+      const response = await fetch(`${SERVER_URL}/api/emails`);
       const data = await response.json();
 
       if (data.success && data.data.length > 0) {
@@ -37,7 +38,7 @@ export default function DraftManager() {
 
   const fetchDrafts = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/drafts");
+      const response = await fetch(`${SERVER_URL}/api/drafts`);
       const data = await response.json();
 
       if (data.success) {
@@ -63,7 +64,7 @@ export default function DraftManager() {
       setMessage("🤖 Generating draft reply...");
 
       const response = await fetch(
-        `http://localhost:5000/api/agent/draft-reply/${selectedEmail.id}`,
+        `${SERVER_URL}/api/agent/draft-reply/${selectedEmail.id}`,
         {
           method: "POST",
         }
@@ -101,7 +102,7 @@ export default function DraftManager() {
 
     try {
       setGenerating(true);
-      const response = await fetch("http://localhost:5000/api/drafts", {
+      const response = await fetch(`${SERVER_URL}/api/drafts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -136,7 +137,7 @@ export default function DraftManager() {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/drafts/${draftId}`, {
+      const response = await fetch(`${SERVER_URL}/api/drafts/${draftId}`, {
         method: "DELETE",
       });
 
@@ -169,7 +170,7 @@ export default function DraftManager() {
     try {
       setGenerating(true);
       const response = await fetch(
-        `http://localhost:5000/api/drafts/${selectedDraft.id}`,
+        `${SERVER_URL}/api/drafts/${selectedDraft.id}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },

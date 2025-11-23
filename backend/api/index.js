@@ -1,5 +1,5 @@
-// File: backend/server.js
-// Auto-deletes and reinitializes database on every startup
+// File: api/index.js
+// Vercel serverless - auto-deletes and reinitializes database on every call
 
 const express = require("express");
 const cors = require("cors");
@@ -8,7 +8,7 @@ const path = require("path");
 require("dotenv").config();
 
 // ===== DATABASE RESET ON STARTUP =====
-const dbPath = path.resolve(__dirname, "email_agent.db");
+const dbPath = path.resolve(__dirname, "../backend/email_agent.db");
 
 // Delete database file if it exists
 if (fs.existsSync(dbPath)) {
@@ -21,11 +21,11 @@ if (fs.existsSync(dbPath)) {
 }
 
 // ===== IMPORT DATABASE (reinitializes tables) =====
-const db = require("./db");
+const db = require("../backend/db");
 
 // Wait for database to initialize, then load prompts
 setTimeout(() => {
-  const { savePrompt, getAllPrompts } = require("./utils/dbHelpers");
+  const { savePrompt, getAllPrompts } = require("../backend/utils/dbHelpers");
 
   getAllPrompts()
     .then((prompts) => {
@@ -70,12 +70,12 @@ Respond with ONLY the reply text, no subject line.`,
 }, 1000);
 
 // ===== IMPORT ROUTES =====
-const emailsRouter = require("./routes/emails");
-const promptsRouter = require("./routes/prompts");
-const draftsRouter = require("./routes/drafts");
-const tasksRouter = require("./routes/tasks");
-const agentRouter = require("./routes/agent");
-const inboxRouter = require("./routes/inbox");
+const emailsRouter = require("../backend/routes/emails");
+const promptsRouter = require("../backend/routes/prompts");
+const draftsRouter = require("../backend/routes/drafts");
+const tasksRouter = require("../backend/routes/tasks");
+const agentRouter = require("../backend/routes/agent");
+const inboxRouter = require("../backend/routes/inbox");
 
 const app = express();
 
@@ -94,7 +94,7 @@ app.use((req, res, next) => {
 // Health check
 app.get("/api/health", (req, res) => {
   res.json({
-    status: "Backend running!",
+    status: "Backend running on Vercel!",
     timestamp: new Date(),
     geminiApi: process.env.GEMINI_API_KEY ? "✓ Configured" : "✗ Missing",
   });
@@ -138,20 +138,5 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ===== START SERVER =====
-const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-  console.log("\n================================");
-  console.log(`✓ Backend server running on http://localhost:${PORT}`);
-  console.log(`✓ Database initialized (fresh start)`);
-  console.log(`✓ All routes loaded`);
-  console.log(`✓ Using Gemini 2.5 Flash API`);
-  console.log("================================\n");
-
-  if (!process.env.GEMINI_API_KEY) {
-    console.warn("⚠️  WARNING: GEMINI_API_KEY not set in environment!");
-  }
-});
-
+// Export for Vercel
 module.exports = app;

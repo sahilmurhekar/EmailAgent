@@ -10,6 +10,7 @@ export default function PromptManager() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
+  const SERVER_URL = import.meta.env.VITE_SERVER_URL;
   useEffect(() => {
     fetchPrompts();
   }, []);
@@ -17,7 +18,7 @@ export default function PromptManager() {
   const fetchPrompts = async () => {
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:5000/api/prompts");
+      const response = await fetch(`${SERVER_URL}/api/prompts`);
       const data = await response.json();
 
       if (data.success) {
@@ -47,7 +48,7 @@ export default function PromptManager() {
 
     try {
       setSaving(true);
-      const response = await fetch("http://localhost:5000/api/prompts", {
+      const response = await fetch(`${SERVER_URL}/api/prompts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

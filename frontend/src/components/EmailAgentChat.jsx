@@ -11,6 +11,7 @@ export default function EmailAgentChat() {
   const [fetchingEmails, setFetchingEmails] = useState(false);
   const messagesEndRef = useRef(null);
 
+  const SERVER_URL = import.meta.env.VITE_SERVER_URL;
   useEffect(() => {
     fetchEmails();
   }, []);
@@ -22,7 +23,7 @@ export default function EmailAgentChat() {
   const fetchEmails = async () => {
     try {
       setFetchingEmails(true);
-      const response = await fetch("http://localhost:5000/api/emails");
+      const response = await fetch(`${SERVER_URL}/api/emails`);
       const data = await response.json();
 
       if (data.success && data.data.length > 0) {
@@ -73,7 +74,7 @@ export default function EmailAgentChat() {
 
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:5000${endpoint}`, {
+      const response = await fetch(`${SERVER_URL}/api${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: queryText }),
@@ -140,7 +141,7 @@ export default function EmailAgentChat() {
     try {
       setLoading(true);
       const response = await fetch(
-        `http://localhost:5000/api/agent/query/${selectedEmail.id}`,
+        `${SERVER_URL}/api/agent/query/${selectedEmail.id}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

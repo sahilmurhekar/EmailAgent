@@ -8,6 +8,7 @@ export default function TaskManager() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
+    const SERVER_URL = import.meta.env.VITE_SERVER_URL;
   useEffect(() => {
     fetchTasks();
   }, [filter]);
@@ -15,10 +16,10 @@ export default function TaskManager() {
   const fetchTasks = async () => {
     try {
       setLoading(true);
-      let url = "http://localhost:5000/api/tasks";
+      let url = `${SERVER_URL}/api/tasks`;
 
       if (filter !== "all") {
-        url = `http://localhost:5000/api/tasks/status/${filter}`;
+        url = `${SERVER_URL}/api/tasks/status/${filter}`;
       }
 
       const response = await fetch(url);
@@ -37,7 +38,7 @@ export default function TaskManager() {
   const updateTaskStatus = async (taskId, newStatus) => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/tasks/${taskId}/status`,
+        `${SERVER_URL}/api/tasks/${taskId}/status`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -63,7 +64,7 @@ export default function TaskManager() {
     if (!window.confirm("Delete this task?")) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
+      const response = await fetch(`${SERVER_URL}/api/tasks/${taskId}`, {
         method: "DELETE",
       });
 
