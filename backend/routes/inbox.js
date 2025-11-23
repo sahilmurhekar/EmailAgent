@@ -1,11 +1,15 @@
-// File: backend/routes/inbox.js
-// Fixed version - proper error handling and JSON responses
-
 const express = require("express");
 const router = express.Router();
 const fs = require("fs");
 const path = require("path");
-const { insertEmail, getAllEmails } = require("../utils/dbHelpers");
+const { pool } = require("../db");
+const {
+  insertEmail,
+  getAllEmails,
+  setAllEmailsVisible,
+  hideAllEmails,
+  getAllEmailsIncludingHidden
+} = require("../utils/dbHelpers");
 
 // GET - Get mock inbox template
 router.get("/template", (req, res) => {
@@ -29,10 +33,33 @@ router.get("/template", (req, res) => {
   }
 });
 
-// POST - Load mock inbox
+// POST - Load mock inbox (makes emails visible)
 router.post("/load", async (req, res) => {
   try {
-    // Try multiple possible paths for mock-inbox.json
+    // Check if emails already exist
+    const existingEmails = await getAllEmailsIncludingHidden();
+
+    if (existingEmails.length > 0) {
+      // If emails exist, just make them visible
+      const count = await setAllEmailsVisible(true);
+      console.log(`✓ Made ${count} existing emails visible`);
+
+      const visibleEmails = await getAllEmails();
+      return res.json({
+        success: true,
+        data: {
+          message: `Successfully loaded ${visibleEmails.length} emails`,
+          emailCount: visibleEmails.length,
+          emails: visibleEmails.map(e => ({
+            id: e.id,
+            sender: e.sender,
+            subject: e.subject,
+          })),
+        },
+      });
+    }
+
+    // If no emails exist, load from mock file
     let mockInboxPath = path.join(__dirname, "../data/mock-inbox.json");
 
     if (!fs.existsSync(mockInboxPath)) {
@@ -62,18 +89,7 @@ router.post("/load", async (req, res) => {
       });
     }
 
-    // Get database connection
-    const db = require("../db");
-
-    // Clear existing emails
-    await new Promise((resolve, reject) => {
-      db.run("DELETE FROM emails", (err) => {
-        if (err) reject(err);
-        else resolve(true);
-      });
-    });
-
-    // Insert new emails
+    // Insert new emails as visible
     const results = [];
     for (const email of mockEmails) {
       if (!email.sender || !email.subject || !email.body) {
@@ -86,7 +102,8 @@ router.post("/load", async (req, res) => {
           email.sender,
           email.subject,
           email.body,
-          "Uncategorized"
+          "Uncategorized",
+          true // Make visible immediately
         );
         results.push({
           id: emailId,
@@ -121,11 +138,13 @@ router.post("/load", async (req, res) => {
 router.get("/status", async (req, res) => {
   try {
     const emails = await getAllEmails();
+    const allEmails = await getAllEmailsIncludingHidden();
 
     res.json({
       success: true,
       data: {
-        totalEmails: emails.length,
+        visibleEmails: emails.length,
+        totalEmails: allEmails.length,
         categorized: emails.filter((e) => e.category !== "Uncategorized")
           .length,
         uncategorized: emails.filter((e) => e.category === "Uncategorized")
@@ -134,6 +153,51 @@ router.get("/status", async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST - Hide all emails (reset inbox view)
+router.post("/hide", async (req, res) => {
+  try {
+    const count = await hideAllEmails();
+    console.log(`✓ Hidden ${count} emails`);
+
+    res.json({
+      success: true,
+      data: {
+        message: `Successfully hidden ${count} emails`,
+        hiddenCount: count,
+      },
+    });
+  } catch (error) {
+    console.error("Error hiding emails:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to hide emails",
+    });
+  }
+});
+
+// DELETE - Clear all emails permanently
+router.delete("/clear", async (req, res) => {
+  try {
+    await pool.query("DELETE FROM tasks");
+    await pool.query("DELETE FROM drafts");
+    await pool.query("DELETE FROM emails");
+    console.log("✓ Cleared all emails and related data");
+
+    res.json({
+      success: true,
+      data: {
+        message: "Successfully cleared all emails",
+      },
+    });
+  } catch (error) {
+    console.error("Error clearing emails:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to clear emails",
+    });
   }
 });
 

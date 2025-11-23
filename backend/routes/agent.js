@@ -5,6 +5,7 @@ const {
   getEmailById,
   updateEmailCategory,
   getPromptByType,
+  getAllEmails, // This now only gets visible emails
 } = require("../utils/dbHelpers");
 
 // POST - Categorize single email
@@ -33,17 +34,27 @@ router.post("/categorize/:emailId", async (req, res) => {
   }
 });
 
-// POST - Categorize all emails
+// POST - Categorize all visible emails
 router.post("/categorize-all", async (req, res) => {
   try {
-    const { getAllEmails } = require("../utils/dbHelpers");
-    const emails = await getAllEmails();
+    const emails = await getAllEmails(); // Only gets visible emails
     const prompt = await getPromptByType("categorization");
 
     if (!prompt) {
       return res
         .status(400)
         .json({ success: false, error: "Categorization prompt not found" });
+    }
+
+    if (emails.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          categorizedCount: 0,
+          results: [],
+          message: "No visible emails to categorize"
+        },
+      });
     }
 
     const results = [];
@@ -64,8 +75,6 @@ router.post("/categorize-all", async (req, res) => {
 });
 
 // POST - Extract action items from email
-
-
 router.post("/extract-tasks/:emailId", async (req, res) => {
   try {
     const email = await getEmailById(req.params.emailId);

@@ -1,50 +1,65 @@
-const db = require("../db");
+const { pool } = require("../db");
 
 // ===== EMAIL HELPERS =====
 
-// Get all emails
 const getAllEmails = () => {
   return new Promise((resolve, reject) => {
-    db.all("SELECT * FROM emails ORDER BY created_at DESC", [], (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows);
-    });
-  });
-};
-
-// Get single email by ID
-const getEmailById = (id) => {
-  return new Promise((resolve, reject) => {
-    db.get("SELECT * FROM emails WHERE id = ?", [id], (err, row) => {
-      if (err) reject(err);
-      else resolve(row);
-    });
-  });
-};
-
-// Insert email
-const insertEmail = (sender, subject, body, category = "Uncategorized") => {
-  return new Promise((resolve, reject) => {
-    db.run(
-      "INSERT INTO emails (sender, subject, body, category) VALUES (?, ?, ?, ?)",
-      [sender, subject, body, category],
-      function (err) {
+    pool.query(
+      "SELECT * FROM emails WHERE visible = TRUE ORDER BY created_at DESC",
+      (err, result) => {
         if (err) reject(err);
-        else resolve(this.lastID);
+        else resolve(result.rows);
       }
     );
   });
 };
 
-// Update email category
+const getAllEmailsIncludingHidden = () => {
+  return new Promise((resolve, reject) => {
+    pool.query(
+      "SELECT * FROM emails ORDER BY created_at DESC",
+      (err, result) => {
+        if (err) reject(err);
+        else resolve(result.rows);
+      }
+    );
+  });
+};
+
+const getEmailById = (id) => {
+  return new Promise((resolve, reject) => {
+    pool.query(
+      "SELECT * FROM emails WHERE id = $1",
+      [id],
+      (err, result) => {
+        if (err) reject(err);
+        else resolve(result.rows[0]);
+      }
+    );
+  });
+};
+
+const insertEmail = (sender, subject, body, category = "Uncategorized", visible = false) => {
+  return new Promise((resolve, reject) => {
+    pool.query(
+      "INSERT INTO emails (sender, subject, body, category, visible) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+      [sender, subject, body, category, visible],
+      (err, result) => {
+        if (err) reject(err);
+        else resolve(result.rows[0].id);
+      }
+    );
+  });
+};
+
 const updateEmailCategory = (id, category) => {
   return new Promise((resolve, reject) => {
-    db.run(
-      "UPDATE emails SET category = ? WHERE id = ?",
+    pool.query(
+      "UPDATE emails SET category = $1 WHERE id = $2",
       [category, id],
-      (err) => {
+      (err, result) => {
         if (err) reject(err);
-        else resolve(true);
+        else resolve(result);
       }
     );
   });
@@ -52,36 +67,39 @@ const updateEmailCategory = (id, category) => {
 
 // ===== PROMPT HELPERS =====
 
-// Get all prompts
 const getAllPrompts = () => {
   return new Promise((resolve, reject) => {
-    db.all("SELECT * FROM prompts", [], (err, rows) => {
+    pool.query("SELECT * FROM prompts", (err, result) => {
       if (err) reject(err);
-      else resolve(rows || []);
+      else resolve(result.rows);
     });
   });
 };
 
-// Get prompt by type
 const getPromptByType = (type) => {
   return new Promise((resolve, reject) => {
-    db.get("SELECT * FROM prompts WHERE type = ?", [type], (err, row) => {
-      if (err) reject(err);
-      else resolve(row);
-    });
+    pool.query(
+      "SELECT * FROM prompts WHERE type = $1",
+      [type],
+      (err, result) => {
+        if (err) reject(err);
+        else resolve(result.rows[0]);
+      }
+    );
   });
 };
 
-// Save or update prompt
 const savePrompt = (type, content) => {
   return new Promise((resolve, reject) => {
-    db.run(
-      `INSERT INTO prompts (type, content) VALUES (?, ?)
-       ON CONFLICT(type) DO UPDATE SET content = ?, updated_at = CURRENT_TIMESTAMP`,
-      [type, content, content],
-      (err) => {
+    pool.query(
+      `INSERT INTO prompts (type, content)
+       VALUES ($1, $2)
+       ON CONFLICT (type)
+       DO UPDATE SET content = $2, updated_at = CURRENT_TIMESTAMP`,
+      [type, content],
+      (err, result) => {
         if (err) reject(err);
-        else resolve(true);
+        else resolve(result);
       }
     );
   });
@@ -89,165 +107,185 @@ const savePrompt = (type, content) => {
 
 // ===== DRAFT HELPERS =====
 
-// Get all drafts
 const getAllDrafts = () => {
   return new Promise((resolve, reject) => {
-    db.all("SELECT * FROM drafts ORDER BY created_at DESC", [], (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows || []);
-    });
+    pool.query(
+      "SELECT * FROM drafts ORDER BY created_at DESC",
+      (err, result) => {
+        if (err) reject(err);
+        else resolve(result.rows);
+      }
+    );
   });
 };
 
-// Get drafts for email
 const getDraftsByEmailId = (emailId) => {
   return new Promise((resolve, reject) => {
-    db.all(
-      "SELECT * FROM drafts WHERE email_id = ? ORDER BY created_at DESC",
+    pool.query(
+      "SELECT * FROM drafts WHERE email_id = $1",
       [emailId],
-      (err, rows) => {
+      (err, result) => {
         if (err) reject(err);
-        else resolve(rows || []);
+        else resolve(result.rows);
       }
     );
   });
 };
 
-// Insert draft
 const insertDraft = (emailId, subject, body, type = "reply") => {
   return new Promise((resolve, reject) => {
-    db.run(
-      "INSERT INTO drafts (email_id, subject, body, type) VALUES (?, ?, ?, ?)",
+    pool.query(
+      "INSERT INTO drafts (email_id, subject, body, type) VALUES ($1, $2, $3, $4) RETURNING id",
       [emailId, subject, body, type],
-      function (err) {
+      (err, result) => {
         if (err) reject(err);
-        else resolve(this.lastID);
+        else resolve(result.rows[0].id);
       }
     );
   });
 };
 
-// Update draft
 const updateDraft = (id, subject, body) => {
   return new Promise((resolve, reject) => {
-    db.run(
-      "UPDATE drafts SET subject = ?, body = ? WHERE id = ?",
+    pool.query(
+      "UPDATE drafts SET subject = $1, body = $2 WHERE id = $3",
       [subject, body, id],
-      (err) => {
+      (err, result) => {
         if (err) reject(err);
-        else resolve(true);
+        else resolve(result);
       }
     );
   });
 };
 
-// Delete draft
 const deleteDraft = (id) => {
   return new Promise((resolve, reject) => {
-    db.run("DELETE FROM drafts WHERE id = ?", [id], (err) => {
+    pool.query("DELETE FROM drafts WHERE id = $1", [id], (err, result) => {
       if (err) reject(err);
-      else resolve(true);
+      else resolve(result);
     });
   });
 };
 
-// Get all tasks
+// ===== TASK HELPERS =====
+
 const getAllTasks = () => {
   return new Promise((resolve, reject) => {
-    db.all(
-      "SELECT * FROM tasks ORDER BY deadline ASC, created_at DESC",
-      [],
-      (err, rows) => {
+    pool.query(
+      "SELECT * FROM tasks ORDER BY created_at DESC",
+      (err, result) => {
         if (err) reject(err);
-        else resolve(rows || []);
+        else resolve(result.rows);
       }
     );
   });
 };
 
-// Get tasks for specific email
 const getTasksByEmailId = (emailId) => {
   return new Promise((resolve, reject) => {
-    db.all(
-      "SELECT * FROM tasks WHERE email_id = ? ORDER BY deadline ASC",
+    pool.query(
+      "SELECT * FROM tasks WHERE email_id = $1",
       [emailId],
-      (err, rows) => {
+      (err, result) => {
         if (err) reject(err);
-        else resolve(rows || []);
+        else resolve(result.rows);
       }
     );
   });
 };
 
-// Insert task
+const getTasksByStatus = (status) => {
+  return new Promise((resolve, reject) => {
+    pool.query(
+      "SELECT * FROM tasks WHERE status = $1",
+      [status],
+      (err, result) => {
+        if (err) reject(err);
+        else resolve(result.rows);
+      }
+    );
+  });
+};
+
 const insertTask = (emailId, task, deadline = "ASAP") => {
   return new Promise((resolve, reject) => {
-    db.run(
-      "INSERT INTO tasks (email_id, task, deadline) VALUES (?, ?, ?)",
+    pool.query(
+      "INSERT INTO tasks (email_id, task, deadline) VALUES ($1, $2, $3) RETURNING id",
       [emailId, task, deadline],
-      function (err) {
+      (err, result) => {
         if (err) reject(err);
-        else resolve(this.lastID);
+        else resolve(result.rows[0].id);
       }
     );
   });
 };
 
-// Update task status (pending, completed, skipped)
-const updateTaskStatus = (taskId, status) => {
+const updateTaskStatus = (id, status) => {
   return new Promise((resolve, reject) => {
-    db.run(
-      "UPDATE tasks SET status = ? WHERE id = ?",
-      [status, taskId],
-      (err) => {
+    pool.query(
+      "UPDATE tasks SET status = $1 WHERE id = $2",
+      [status, id],
+      (err, result) => {
         if (err) reject(err);
-        else resolve(true);
+        else resolve(result);
       }
     );
   });
 };
 
-// Delete task
-const deleteTask = (taskId) => {
+const deleteTask = (id) => {
   return new Promise((resolve, reject) => {
-    db.run("DELETE FROM tasks WHERE id = ?", [taskId], (err) => {
+    pool.query("DELETE FROM tasks WHERE id = $1", [id], (err, result) => {
       if (err) reject(err);
-      else resolve(true);
+      else resolve(result);
     });
   });
 };
 
-// Get tasks by status
-const getTasksByStatus = (status) => {
+const setAllEmailsVisible = (visible = true) => {
   return new Promise((resolve, reject) => {
-    db.all(
-      "SELECT * FROM tasks WHERE status = ? ORDER BY deadline ASC",
-      [status],
-      (err, rows) => {
+    pool.query(
+      "UPDATE emails SET visible = $1",
+      [visible],
+      (err, result) => {
         if (err) reject(err);
-        else resolve(rows || []);
+        else resolve(result.rowCount);
       }
     );
   });
 };
 
-// Export at end of dbHelpers.js
+const hideAllEmails = () => {
+  return setAllEmailsVisible(false);
+};
+
 module.exports = {
+  // Emails
   getAllEmails,
+  getAllEmailsIncludingHidden,
   getEmailById,
   insertEmail,
   updateEmailCategory,
+  setAllEmailsVisible,
+  hideAllEmails,
+
+  // Prompts
   getAllPrompts,
   getPromptByType,
   savePrompt,
+
+  // Drafts
   getAllDrafts,
   getDraftsByEmailId,
   insertDraft,
   updateDraft,
-  deleteDraft,getAllTasks,
+  deleteDraft,
+
+  // Tasks
+  getAllTasks,
   getTasksByEmailId,
+  getTasksByStatus,
   insertTask,
   updateTaskStatus,
   deleteTask,
-  getTasksByStatus,
 };
