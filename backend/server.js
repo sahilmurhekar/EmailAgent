@@ -1,10 +1,10 @@
+// server.js
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 
 // Import database
-const { pool, initializeTables } = require("./db");
-const {resetDatabase} = require("./db");
+const { pool, initializeTables, resetDatabase } = require("./db");
 const { savePrompt, getAllPrompts } = require("./utils/dbHelpers");
 
 // Import routes
@@ -15,15 +15,12 @@ const tasksRouter = require("./routes/tasks");
 const agentRouter = require("./routes/agent");
 const inboxRouter = require("./routes/inbox");
 
-
-
 const app = express();
 
 // ===== MIDDLEWARE =====
 app.use(cors());
 app.use(express.json());
 
-// Logging middleware
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
@@ -32,42 +29,35 @@ app.use((req, res, next) => {
 // ===== INITIALIZE DATABASE =====
 const initializeDatabase = async () => {
   try {
-    // Initialize tables
     await initializeTables();
 
-    // Check and initialize prompts
     const prompts = await getAllPrompts();
-
     if (prompts.length === 0) {
       console.log("📝 Initializing default prompts...");
 
-      const defaultPrompts = {
-        categorization: `Categorize the following email into ONE category: Important, Newsletter, Spam, or To-Do.
+      await Promise.all([
+        savePrompt("categorization",
+          `Categorize the following email into ONE category: Important, Newsletter, Spam, or To-Do.
 For To-Do emails: must include a direct request requiring user action.
-Respond with ONLY the category name, nothing else.`,
+Respond with ONLY the category name, nothing else.`),
 
-        actionItems: `Extract action items from the email as a JSON array.
+        savePrompt("actionItems",
+          `Extract action items from the email as a JSON array.
 Format: [{"task": "task description", "deadline": "specific date or ASAP"}]
 If no deadline mentioned, use "ASAP".
-Respond with ONLY the JSON array, no markdown, no explanation.
-Example: [{"task":"Review document","deadline":"Tomorrow"},{"task":"Send report","deadline":"Friday"}]
-If no action items exist, respond with: []`,
+Respond with ONLY the JSON array, no markdown, no explanation.`),
 
-        autoReply: `Draft a polite, professional reply to this email.
+        savePrompt("autoReply",
+          `Draft a polite, professional reply to this email.
 Keep it brief (2-3 sentences).
-Respond with ONLY the reply text, no subject line.`,
-      };
-
-      await Promise.all([
-        savePrompt("categorization", defaultPrompts.categorization),
-        savePrompt("actionItems", defaultPrompts.actionItems),
-        savePrompt("autoReply", defaultPrompts.autoReply),
+Respond with ONLY the reply text, no subject line.`),
       ]);
 
       console.log("✓ All default prompts initialized");
     } else {
       console.log(`✓ Found ${prompts.length} existing prompts`);
     }
+
   } catch (err) {
     console.error("✗ Error initializing database:", err);
     throw err;
@@ -79,7 +69,7 @@ Respond with ONLY the reply text, no subject line.`,
 // Health check
 app.get("/api/health", async (req, res) => {
   try {
-    await pool.query('SELECT NOW()');
+    await pool.query("SELECT NOW()");
     res.json({
       status: "Backend running!",
       timestamp: new Date(),
@@ -87,15 +77,11 @@ app.get("/api/health", async (req, res) => {
       geminiApi: process.env.GEMINI_API_KEY ? "✓ Configured" : "✗ Missing",
     });
   } catch (err) {
-    res.status(500).json({
-      status: "Error",
-      database: "✗ Connection failed",
-      error: err.message
-    });
+    res.status(500).json({ status: "Error", database: "✗ Connection failed", error: err.message });
   }
 });
 
-// API Routes
+// API routes
 app.use("/api/emails", emailsRouter);
 app.use("/api/prompts", promptsRouter);
 app.use("/api/drafts", draftsRouter);
@@ -103,19 +89,18 @@ app.use("/api/tasks", tasksRouter);
 app.use("/api/agent", agentRouter);
 app.use("/api/inbox", inboxRouter);
 
-// Reset DB on demand
+// Reset DB
 app.post("/api/reset", async (req, res) => {
   try {
-   await resetDatabase();
-await initializeTables();   // 👈 recreate tables immediately
-res.json({ success: true, message: "Database reset and tables recreated" });
+    await resetDatabase();
+    await initializeTables(); // recreate tables
+    res.json({ success: true, message: "Database reset and tables recreated" });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-
-// Load data (recreate tables + default prompts)
+// Load data
 app.post("/api/load-data", async (req, res) => {
   try {
     await initializeTables();
@@ -125,10 +110,10 @@ app.post("/api/load-data", async (req, res) => {
   }
 });
 
-// Debug endpoint
+// Debug
 app.get("/api/debug", async (req, res) => {
   try {
-    const result = await pool.query('SELECT NOW() as current_time');
+    const result = await pool.query("SELECT NOW() as current_time");
     res.json({
       success: true,
       data: {
@@ -143,10 +128,7 @@ app.get("/api/debug", async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      error: err.message
-    });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -155,43 +137,35 @@ app.use((req, res) => {
   res.status(404).json({ success: false, error: "Endpoint not found" });
 });
 
-// Error handling middleware
+// Error handler
 app.use((err, req, res, next) => {
   console.error("✗ Server error:", err);
-  res.status(500).json({
-    success: false,
-    error: err.message || "Internal server error",
-  });
+  res.status(500).json({ success: false, error: err.message });
 });
 
-// ===== START SERVER =====
-const PORT = process.env.PORT || 5000;
+// ===== START SERVER LOCALLY ONLY =====
+if (!process.env.VERCEL) {
+  const PORT = process.env.PORT || 5000;
+  const startServer = async () => {
+    try {
+      await initializeDatabase();
 
-const startServer = async () => {
-  try {
-    await initializeDatabase();
+      app.listen(PORT, () => {
+        console.log("\n================================");
+        console.log(`✓ Backend running at http://localhost:${PORT}`);
+        console.log(`✓ Database connected`);
+        console.log(`✓ Routes ready`);
+        console.log("================================\n");
+      });
 
-    app.listen(PORT, () => {
-      console.log("\n================================");
-      console.log(`✓ Backend server running on http://localhost:${PORT}`);
-      console.log(`✓ Database connected (PostgreSQL/Supabase)`);
-      console.log(`✓ All routes loaded`);
-      console.log(`✓ Using Gemini 2.5 Flash API`);
-      console.log("================================\n");
+    } catch (err) {
+      console.error("✗ Failed to start server:", err);
+      process.exit(1);
+    }
+  };
 
-      if (!process.env.GEMINI_API_KEY) {
-        console.warn("⚠️  WARNING: GEMINI_API_KEY not set in environment!");
-      }
-      if (!process.env.DATABASE_URL) {
-        console.warn("⚠️  WARNING: DATABASE_URL not set in environment!");
-      }
-    });
-  } catch (err) {
-    console.error("✗ Failed to start server:", err);
-    process.exit(1);
-  }
-};
+  startServer();
+}
 
-startServer();
-
+// Export for Vercel
 module.exports = app;
