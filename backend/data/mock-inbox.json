@@ -1,0 +1,82 @@
+[
+  {
+    "sender": "boss@company.com",
+    "subject": "Urgent: Q4 Budget Review Meeting Tomorrow",
+    "body": "Hi,\n\nWe need to finalize the Q4 budget before the board meeting. Can you prepare a detailed breakdown of last quarter's spending? Please have it ready by 10 AM tomorrow.\n\nThanks,\nJohn"
+  },
+  {
+    "sender": "newsletter@techcrunch.com",
+    "subject": "TechCrunch Daily: AI Breakthroughs This Week",
+    "body": "Stay updated with the latest in tech!\n\nThis week's top stories:\n- OpenAI announces new GPT model\n- Google releases Gemini 2.0\n- Meta's new AI research\n\nRead more on TechCrunch..."
+  },
+  {
+    "sender": "support@amazon.com",
+    "subject": "Your Order #123456 Has Been Shipped",
+    "body": "Your order has been dispatched and is on its way!\n\nTracking number: 1Z999AA10123456784\nExpected delivery: 3-5 business days\n\nThank you for shopping with us."
+  },
+  {
+    "sender": "project-team@company.com",
+    "subject": "Action Required: Code Review for Feature X",
+    "body": "Hey team,\n\nI've uploaded the new feature branch for code review. Please review by EOD Friday and leave comments in the PR.\n\nPR Link: https://github.com/project/pull/456\n\nThanks!"
+  },
+  {
+    "sender": "noreply@linkedin.com",
+    "subject": "You have 5 new profile views",
+    "body": "Great news! 5 people viewed your profile this week.\n\nSee who they are and expand your network.\nClick here to learn more..."
+  },
+  {
+    "sender": "client@startup.io",
+    "subject": "Re: Project Scope Discussion - Need Your Input",
+    "body": "Hi,\n\nFollowing up on our call yesterday. We need to decide on the final scope for the MVP.\n\nCan you confirm:\n1. Are we keeping the payment integration in Phase 1?\n2. What's your timeline for the API documentation?\n3. Do we need to hire QA before we start?\n\nPlease respond ASAP.\n\nBest,\nAlex"
+  },
+  {
+    "sender": "hr@company.com",
+    "subject": "Reminder: Annual Performance Review Scheduled",
+    "body": "Your annual performance review is scheduled for next Thursday at 2 PM with your manager.\n\nPlease prepare your self-assessment and submit it to HR by Wednesday.\n\nHuman Resources Team"
+  },
+  {
+    "sender": "spammer@promo.net",
+    "subject": "AMAZING OFFER! 99% OFF - Limited Time Only!!!",
+    "body": "OMG! You won't believe this deal! \n\nBuy now and get 99% off everything in our store! \nThis offer expires in 24 hours!\n\nCLICK HERE TO CLAIM YOUR DEAL!!!\n\nUnsubscribe"
+  },
+  {
+    "sender": "dev-team@company.com",
+    "subject": "Weekly Standup: Please Update Your Status",
+    "body": "Hi team,\n\nPlease update your status for this week's standup meeting:\n- What did you complete?\n- What are you working on?\n- Any blockers?\n\nReply to this email or fill the form here: [link]\n\nDeadline: Friday 5 PM"
+  },
+  {
+    "sender": "finance@company.com",
+    "subject": "Your Expense Report (REF: EXP-2024-001) Needs Approval",
+    "body": "Your expense report has been submitted for review.\n\nDetails:\n- Total Amount: $1,245.50\n- Items: Flight, Hotel, Meals\n- Project: Client Visit\n\nPlease provide receipts for the missing items before Monday.\n\nThanks,\nFinance Team"
+  },
+  {
+    "sender": "podcast@example.com",
+    "subject": "New Episode: 'The Future of AI' - Listen Now",
+    "body": "Our latest podcast episode is live!\n\nIn this episode, we interview leading AI researchers about the future of machine learning.\n\nListen on Spotify, Apple Podcasts, or our website."
+  },
+  {
+    "sender": "recruiter@talent.com",
+    "subject": "Exciting Opportunity: Senior Engineer Role",
+    "body": "Hi,\n\nWe saw your profile and think you'd be a great fit for our Senior Engineer position.\n\nCompany: TechCorp\nLocation: Remote\nSalary: $200K - $250K\n\nWould you be interested in a quick chat?\n\nBest,\nSarah (Recruiter)"
+  },
+  {
+    "sender": "meeting-bot@zoom.us",
+    "subject": "Meeting Reminder: Team Sync at 3 PM Today",
+    "body": "This is a reminder that your meeting 'Team Sync' starts in 15 minutes.\n\nJoin: https://zoom.us/j/123456789\nTime: 3:00 PM - 4:00 PM\n\nSee you there!"
+  },
+  {
+    "sender": "partner@agency.com",
+    "subject": "Partnership Proposal - Let's Discuss Next Steps",
+    "body": "Hi,\n\nFollowing up on our initial conversation. We believe there's a great opportunity to collaborate on the new product launch.\n\nCould we schedule a call next week to discuss terms and timeline?\n\nLooking forward to hearing from you.\n\nRegards,\nMichael"
+  },
+  {
+    "sender": "noreply@github.com",
+    "subject": "You were mentioned in Issue #789 on project/repo",
+    "body": "@you was mentioned in a discussion about the new authentication system.\n\nView the issue: https://github.com/project/repo/issues/789\n\nRespond directly on GitHub or manage your notifications."
+  },
+  {
+    "sender": "marketing@company.com",
+    "subject": "Action Item: Please Complete the Brand Survey by Friday",
+    "body": "Hey,\n\nAs part of our rebrand initiative, we need all employees to complete a quick 5-minute survey about brand values and company culture.\n\nPlease submit by Friday EOD.\n\nSurvey Link: [link]\n\nThanks for your input!\n\nMarketing Team"
+  }
+]
