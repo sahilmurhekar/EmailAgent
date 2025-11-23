@@ -1,5 +1,5 @@
 // File: frontend/src/App.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Mail, Settings, Inbox, MessageSquare, FileEdit, CheckSquare, Menu, X } from "lucide-react";
 import PromptManager from "./components/PromptManager";
 import InboxView from "./components/InboxView";
@@ -10,6 +10,13 @@ import TaskManager from "./components/TaskManager";
 export default function App() {
   const [activeTab, setActiveTab] = useState("inbox");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const SERVER_URL = import.meta.env.VITE_SERVER_URL;
+  // Clear DB whenever page loads or refreshes
+  useEffect(() => {
+    fetch(`${SERVER_URL}/api/reset`, { method: "POST" })
+      .then(() => console.log("Database cleared on refresh"))
+      .catch(err => console.error("Failed to reset DB:", err));
+  }, []);
 
   const navigation = [
     { id: "inbox", name: "Inbox", icon: Inbox },

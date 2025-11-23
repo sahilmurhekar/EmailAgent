@@ -74,7 +74,7 @@ export default function EmailAgentChat() {
 
     try {
       setLoading(true);
-      const response = await fetch(`${SERVER_URL}/api${endpoint}`, {
+      const response = await fetch(`${SERVER_URL}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: queryText }),
