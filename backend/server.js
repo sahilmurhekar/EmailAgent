@@ -24,33 +24,37 @@ app.use((req, res, next) => {
   next();
 });
 
-// ALWAYS reset + reinitialize database on every cold start
-// This runs once per Lambda instance (i.e., on every refresh in your case)
+// Initialize tables only once on cold start (no reset)
 (async () => {
   try {
-    console.log("Resetting and reinitializing database on cold start...");
-    await resetDatabase();        // ← Drops everything
-    await initializeTables();     // ← Recreates tables
+    console.log("Initializing database tables...");
+    await initializeTables();     // ← Creates tables if they don't exist
 
-    // Insert default prompts
-    await Promise.all([
-      savePrompt("categorization", `Categorize the following email into ONE category: Important, Newsletter, Spam, or To-Do.
+    // Insert default prompts if they don't already exist
+    const existingPrompts = await getAllPrompts();
+    if (existingPrompts.length === 0) {
+      await Promise.all([
+        savePrompt("categorization", `Categorize the following email into ONE category: Important, Newsletter, Spam, or To-Do.
 For To-Do emails: must include a direct request requiring user action.
 Respond with ONLY the category name, nothing else.`),
 
-      savePrompt("actionItems", `Extract action items from the email as a JSON array.
+        savePrompt("actionItems", `Extract action items from the email as a JSON array.
 Format: [{"task": "task description", "deadline": "specific date or ASAP"}]
 If no deadline mentioned, use "ASAP".
 Respond with ONLY the JSON array, no markdown, no explanation.`),
 
-      savePrompt("autoReply", `Draft a polite, professional reply to this email.
+        savePrompt("autoReply", `Draft a polite, professional reply to this email.
 Keep it brief (2-3 sentences).
 Respond with ONLY the reply text, no subject line.`),
-    ]);
+      ]);
+      console.log("Default prompts loaded");
+    } else {
+      console.log("Default prompts already exist, skipping insertion");
+    }
 
-    console.log("Database fully reset and default prompts loaded");
+    console.log("Database initialized successfully");
   } catch (err) {
-    console.error("Failed to reset/initialize database:", err);
+    console.error("Failed to initialize database:", err);
   }
 })();
 
@@ -63,7 +67,7 @@ app.get("/api/health", async (req, res) => {
       timestamp: new Date(),
       database: "Connected",
       geminiApi: process.env.GEMINI_API_KEY ? "Configured" : "Missing",
-      note: "DB resets on every cold start",
+      note: "Data persists across sessions",
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -89,7 +93,7 @@ if (!process.env.VERCEL) {
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => {
     console.log(`\nLocal server running at http://localhost:${PORT}`);
-    console.log("Database will reset on every server restart\n");
+    console.log("Database data persists between restarts\n");
   });
 }
 
