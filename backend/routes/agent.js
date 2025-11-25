@@ -1,43 +1,28 @@
 const express = require("express");
 const router = express.Router();
-const { callGemini } = require("../utils/gemini");
+const { callGemini, getQueueStatus } = require("../utils/gemini");
 const {
   getEmailById,
   updateEmailCategory,
   getPromptByType,
-  getAllEmails, // This now only gets visible emails
+  getAllEmails,
 } = require("../utils/dbHelpers");
 
-// Add this to your agent routes
-const requestQueue = [];
-let processing = false;
-
-const queueGeminiCall = async (emailText, userPrompt) => {
-  return new Promise((resolve, reject) => {
-    requestQueue.push({ emailText, userPrompt, resolve, reject });
-    processQueue();
-  });
-};
-
-const processQueue = async () => {
-  if (processing || requestQueue.length === 0) return;
-
-  processing = true;
-  const { emailText, userPrompt, resolve, reject } = requestQueue.shift();
-
+// GET - Queue status
+router.get("/queue-status", (req, res) => {
   try {
-    const result = await callGemini(emailText, userPrompt);
-    resolve(result);
+    const status = getQueueStatus();
+    res.json({
+      success: true,
+      data: {
+        ...status,
+        message: `${status.total} requests in queue (${status.processing} processing, ${status.queued} waiting)`
+      }
+    });
   } catch (error) {
-    reject(error);
+    res.status(500).json({ success: false, error: error.message });
   }
-
-  // Wait 1 second between requests
-  setTimeout(() => {
-    processing = false;
-    processQueue();
-  }, 1000);
-};
+});
 
 // POST - Categorize single email
 router.post("/categorize/:emailId", async (req, res) => {
@@ -68,7 +53,7 @@ router.post("/categorize/:emailId", async (req, res) => {
 // POST - Categorize all visible emails
 router.post("/categorize-all", async (req, res) => {
   try {
-    const emails = await getAllEmails(); // Only gets visible emails
+    const emails = await getAllEmails();
     const prompt = await getPromptByType("categorization");
 
     if (!prompt) {
@@ -88,17 +73,31 @@ router.post("/categorize-all", async (req, res) => {
       });
     }
 
-    const results = [];
-    for (const email of emails) {
+    // Queue all requests
+    console.log(`📤 Queuing ${emails.length} categorization requests...`);
+    const promises = emails.map(email => {
       const emailText = `From: ${email.sender}\nSubject: ${email.subject}\n\n${email.body}`;
-      const category = await callGemini(emailText, prompt.content);
-      await updateEmailCategory(email.id, category.trim());
-      results.push({ emailId: email.id, category: category.trim() });
-    }
+      return callGemini(emailText, prompt.content)
+        .then(category => {
+          return updateEmailCategory(email.id, category.trim())
+            .then(() => ({ emailId: email.id, category: category.trim() }));
+        })
+        .catch(error => {
+          console.error(`Failed to categorize email ${email.id}:`, error.message);
+          return { emailId: email.id, category: "Error", error: error.message };
+        });
+    });
+
+    const results = await Promise.all(promises);
+    const successful = results.filter(r => !r.error).length;
 
     res.json({
       success: true,
-      data: { categorizedCount: results.length, results },
+      data: {
+        categorizedCount: successful,
+        totalRequested: emails.length,
+        results
+      },
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -123,26 +122,21 @@ router.post("/extract-tasks/:emailId", async (req, res) => {
     const emailText = `From: ${email.sender}\nSubject: ${email.subject}\n\n${email.body}`;
     const response = await callGemini(emailText, prompt.content);
 
-    // Parse the response more carefully
     let tasks = [];
     const cleanResponse = response.trim();
 
-    // Try to extract JSON from response
     if (cleanResponse.startsWith("[")) {
       try {
         tasks = JSON.parse(cleanResponse);
       } catch (e) {
-        // If JSON parsing fails, try to extract from markdown code blocks
         const jsonMatch = cleanResponse.match(/```json\s*([\s\S]*?)\s*```/);
         if (jsonMatch) {
           try {
             tasks = JSON.parse(jsonMatch[1]);
           } catch (e2) {
-            // Fallback: create single task from response
             tasks = [{ task: cleanResponse, deadline: "ASAP" }];
           }
         } else {
-          // Fallback: create single task from response
           tasks = [{ task: cleanResponse, deadline: "ASAP" }];
         }
       }
@@ -153,17 +147,14 @@ router.post("/extract-tasks/:emailId", async (req, res) => {
         tasks = [{ task: cleanResponse, deadline: "ASAP" }];
       }
     } else {
-      // Response is plain text, convert to task format
       const taskLines = cleanResponse
         .split("\n")
         .filter((line) => line.trim().length > 0);
 
       tasks = taskLines.map((line) => {
-        // Try to extract deadline from line
         let task = line;
         let deadline = "ASAP";
 
-        // Check for common deadline patterns
         if (line.includes("(") && line.includes(")")) {
           const match = line.match(/\((.*?)\)/);
           if (match) {
@@ -172,25 +163,20 @@ router.post("/extract-tasks/:emailId", async (req, res) => {
           }
         }
 
-        // Remove bullet points and dashes
         task = task.replace(/^[\s•\-*]+/, "").trim();
-
         return { task, deadline };
       });
     }
 
-    // Ensure tasks is an array
     if (!Array.isArray(tasks)) {
       tasks = [tasks];
     }
 
-    // Filter out empty tasks
     tasks = tasks.filter((t) => {
       const taskText = typeof t === "string" ? t : t.task || t.text || "";
       return taskText.trim().length > 0;
     });
 
-    // If no tasks found, return error
     if (tasks.length === 0) {
       return res.json({
         success: true,
@@ -203,7 +189,6 @@ router.post("/extract-tasks/:emailId", async (req, res) => {
       });
     }
 
-    // Save tasks to database
     const { insertTask } = require("../utils/dbHelpers");
     const savedTasks = [];
 
@@ -212,7 +197,6 @@ router.post("/extract-tasks/:emailId", async (req, res) => {
       const taskDeadline =
         typeof t === "object" ? (t.deadline || t.due_date || "ASAP") : "ASAP";
 
-      // Only save if task is not just JSON text
       if (taskText && !taskText.includes("json")) {
         try {
           const taskId = await insertTask(req.params.emailId, taskText, taskDeadline);
