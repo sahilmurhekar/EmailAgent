@@ -5,7 +5,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 // Call Gemini 2.5 Flash API with a prompt and email content
 const callGemini = async (emailText, userPrompt) => {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
 
     const fullPrompt = `${userPrompt}\n\n---EMAIL---\n${emailText}`;
 
