@@ -8,6 +8,37 @@ const {
   getAllEmails, // This now only gets visible emails
 } = require("../utils/dbHelpers");
 
+// Add this to your agent routes
+const requestQueue = [];
+let processing = false;
+
+const queueGeminiCall = async (emailText, userPrompt) => {
+  return new Promise((resolve, reject) => {
+    requestQueue.push({ emailText, userPrompt, resolve, reject });
+    processQueue();
+  });
+};
+
+const processQueue = async () => {
+  if (processing || requestQueue.length === 0) return;
+
+  processing = true;
+  const { emailText, userPrompt, resolve, reject } = requestQueue.shift();
+
+  try {
+    const result = await callGemini(emailText, userPrompt);
+    resolve(result);
+  } catch (error) {
+    reject(error);
+  }
+
+  // Wait 1 second between requests
+  setTimeout(() => {
+    processing = false;
+    processQueue();
+  }, 1000);
+};
+
 // POST - Categorize single email
 router.post("/categorize/:emailId", async (req, res) => {
   try {
